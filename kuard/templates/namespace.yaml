@@ -1,0 +1,6 @@
+# Don't create a namespace with Helm!
+
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: {{ include "kuard.fullname" . }}

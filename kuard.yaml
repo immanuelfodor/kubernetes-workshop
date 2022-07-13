@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuard
+---
+# kubectl create deploy --image gcr.io/kuar-demo/kuard-amd64:blue kuard --dry-run='client' -o yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kuard
+  name: kuard
+  namespace: kuard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuard
+  template:
+    metadata:
+      labels:
+        app: kuard
+    spec:
+      containers:
+      - image: gcr.io/kuar-demo/kuard-amd64:blue
+        name: kuard
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kuard
+  name: kuard
+  namespace: kuard
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: kuard
+  type: ClusterIP
+---
+# htpasswd -c auth k8s  # workshop
+# kubectl create secret generic kuard-auth --from-file=auth --dry-run='client' -o yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kuard-auth
+  namespace: kuard
+data:
+  auth: azhzOiRhcHIxJG9lYkdaRHlOJGs5RW9JVjMwRU5ncXR1TUNBUWVFYjEK
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuard
+  namespace: kuard
+  # @see: https://kubernetes.github.io/ingress-nginx/examples/auth/basic/
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: kuard-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'You shall not pass!'
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kuard.k8sws.gke
+    http:
+      paths:
+      - backend:
+          service:
+            name: kuard
+            port:
+              name: http
+        path: /
+        pathType: Prefix
